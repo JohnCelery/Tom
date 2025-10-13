@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tomagotchi</title>
+    <meta
+      name="description"
+      content="A zero-dependency virtual pet for the browser."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="branding">
+        <h1>Tomagotchi</h1>
+        <p class="tagline">Your browser-native companion</p>
+      </div>
+      <div class="name-editor">
+        <label for="name-input">Pet name</label>
+        <div class="name-input-group">
+          <input id="name-input" maxlength="24" />
+          <button id="rename-button" type="button">Rename</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="pet-card" aria-live="polite">
+        <div class="pet-portrait" role="img" aria-label="Tomagotchi sprite">
+          <div class="pet-sprite" id="pet-sprite"></div>
+        </div>
+        <div class="pet-details">
+          <p><strong>Stage:</strong> <span id="pet-stage"></span></p>
+          <p><strong>Mood:</strong> <span id="pet-mood"></span></p>
+          <p><strong>Age:</strong> <span id="pet-age"></span></p>
+          <p><strong>Traits:</strong> <span id="pet-traits"></span></p>
+        </div>
+      </section>
+
+      <section class="stats" aria-labelledby="stats-heading">
+        <h2 id="stats-heading">Needs</h2>
+        <ul class="stat-list" id="stat-list"></ul>
+      </section>
+
+      <section class="actions" aria-labelledby="actions-heading">
+        <div class="actions-header">
+          <h2 id="actions-heading">Actions</h2>
+          <button id="reset-button" type="button" class="secondary">
+            Reset save
+          </button>
+        </div>
+        <div class="action-grid" id="action-grid"></div>
+      </section>
+
+      <section class="history" aria-labelledby="history-heading">
+        <h2 id="history-heading">Recent moments</h2>
+        <ol id="history-list" class="history-list"></ol>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>
+        Progress is saved in your browser automatically. GitHub Pages ready,
+        dependency free.
+      </p>
+    </footer>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>

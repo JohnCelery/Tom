@@ -1,75 +1,53 @@
 # Tomagotchi
 
-A zero-dependency, terminal-native virtual companion inspired by classic digital pets but crafted with lush Unicode art, layered ambience, and meaningful interactions. Everything is implemented with the Python standard library so the game runs anywhere Python 3.10+ is available.
+Tomagotchi is a zero-dependency virtual companion that runs entirely in the
+browser. The app is built with plain HTML, CSS, and JavaScript so it can be
+hosted directly from GitHub Pages or any other static file host—no build tools
+or server processes required.
+
+## Live Hosting
+
+1. Commit the repository to GitHub (or fork it).
+2. Enable GitHub Pages for the repository and set the source to the `main`
+   branch ("Deploy from a branch" → `/(root)`).
+3. Visit the published URL and start caring for your pet.
+
+You can also open `index.html` locally in any modern browser; progress is stored
+using `localStorage` and stays on your device.
 
 ## Features
-- **Expressive lifecycle** – Guide your companion from egg to adult with evolving personalities and cosmetic flourishes.
-- **Deep care systems** – Balance nourishment, energy, cleanliness, happiness, health, and social needs while responding to dynamic events.
-- **High-fidelity terminal art** – Layered Unicode sprites, animated overlays, and atmospheric text keep the habitat feeling alive without external dependencies.
-- **Rich interaction suite** – Share meals, play mini-games, chat, tidy the habitat, and more with contextual feedback for each action.
-- **Persistent world** – Autosave ensures your pet remembers every milestone and journal entry.
 
-## Getting Started
-1. Ensure Python 3.10 or newer is installed.
-2. Clone the repository and navigate to it in your terminal.
-3. Launch the game:
-   ```bash
-   python -m tomagotchi.game
-   ```
-4. Follow the on-screen prompts to name your companion and begin caring for them.
+- **Expressive lifecycle** – Guide your companion from egg to adult with stages
+  that evolve as you care for them.
+- **Need management** – Balance nourishment, energy, cleanliness, happiness,
+  health, and social needs as time passes.
+- **Ambient personality** – Track mood shifts, traits, and a rolling history of
+  shared moments.
+- **Action rich** – Prepare meals, play, rest, chat, and more with stat effects
+  tuned for strategic care.
+- **Autosave** – Progress is written to `localStorage` automatically and on
+  page exit.
 
-The game stores progress in `data/savegame.json`. Delete this file to start a fresh adventure.
+## Project Structure
 
-## Controls & Loop
-During play you can type the key of any action to perform it:
-- `meal` – Serve a vibrant shared meal.
-- `snack` – Offer a quick treat.
-- `play` – Start a playful mini-session.
-- `clean` – Refresh the habitat.
-- `rest` – Slow down and recuperate.
-- `talk` – Share heartfelt conversation.
-- `medicine` – Administer a soothing remedy.
-- `discipline` – Set gentle boundaries.
-- `wait` – Observe quietly as time passes.
-
-Special commands:
-- `help` – Show the action reference sheet.
-- `save` – Manually write progress to disk.
-- `quit` – Exit gracefully (progress is saved automatically).
-
-## Architecture Overview
 ```
-tomagotchi/
-├── game.py              # Entry point and main loop
-├── core/
-│   ├── actions.py       # Action registry and stat effects
-│   ├── events.py        # Event manager reacting to state
-│   ├── persistence.py   # Save/load helpers
-│   ├── scheduler.py     # Time progression utilities
-│   └── state.py         # Pet state, mood, and lifecycle logic
-├── ui/
-│   ├── inputs.py        # Command prompt helpers
-│   ├── renderer.py      # Terminal renderer and animations
-│   └── widgets.py       # Reusable UI components
-├── graphics/
-│   └── sprites.py       # Unicode sprite sheets
-└── tests/
-    └── test_state.py    # Core state unit tests
+.
+├── index.html   # Application markup and entry point
+├── script.js    # Game loop, persistence, and interaction logic
+└── styles.css   # Layout and visual design
 ```
 
-## Development
-- The project intentionally avoids third-party dependencies. Keep future contributions standard-library friendly unless requirements change.
-- Follow the guidelines documented in `AGENTS.md` for code style, testing, and asset creation.
-- Run the unit test suite with:
-  ```bash
-  python -m unittest discover -s tests -p 'test_*.py'
-  ```
+No external dependencies, tooling, or binary assets are required. Every asset is
+text-based so the project remains lightweight and Git-friendly.
 
-## Roadmap Ideas
-- Additional mini-games with reaction or rhythm mechanics.
-- Expanded sprite library with seasonal themes and idle motion variants.
-- Journal timeline export and achievement showcase.
-- Accessibility toggles for reduced animations and monochrome mode.
+## Development Notes
+
+- Modify `script.js` to tweak actions, stat decay, or lifecycle thresholds.
+- Styles live in `styles.css`; the design embraces modern CSS features without
+  any frameworks.
+- The application intentionally runs without bundlers or package managers to
+  keep deployment as simple as pushing static files.
 
 ## License
-Released under the MIT License. See `LICENSE` if provided, or adapt as needed for your project.
+
+Released under the MIT License. Adapt as desired for your own companions.
