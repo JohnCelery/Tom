@@ -134,6 +134,7 @@ const SAVE_INTERVAL_MS = 20000;
 const EVENT_COOLDOWN_MIN = 24;
 const EVENT_COOLDOWN_JITTER = 12;
 const HISTORY_LIMIT = 24;
+const CRITICAL_THRESHOLD = 25;
 const EVENT_POOL = [
   {
     id: "mysterious-snack",
@@ -209,6 +210,72 @@ const EVENT_POOL = [
       },
     ],
   },
+  {
+    id: "sickness",
+    title: "Sudden sickness",
+    description: "A feverish chill leaves them groggy and vulnerable.",
+    tag: "health",
+    triggeredOnly: true,
+    resolvesDebuff: "sickness",
+    choices: [
+      {
+        label: "Offer medicine and rest",
+        deltas: { health: 22, energy: 6, cleanliness: -4, happiness: -2 },
+        clearsDebuff: true,
+        history: "Nursed them patiently back to strength.",
+      },
+      {
+        label: "Wait it out",
+        deltas: { health: 12, energy: -4, happiness: -4 },
+        clearsDebuff: true,
+        history: "Weathered the sickness together.",
+      },
+    ],
+  },
+  {
+    id: "meltdown",
+    title: "Emotional meltdown",
+    description: "Overwhelmed feelings spill over into tears and stomps.",
+    tag: "stress",
+    triggeredOnly: true,
+    resolvesDebuff: "meltdown",
+    choices: [
+      {
+        label: "Soothe and listen",
+        deltas: { happiness: 14, social: 10, energy: -6 },
+        clearsDebuff: true,
+        history: "Helped them feel heard and safe.",
+      },
+      {
+        label: "Give quiet space",
+        deltas: { happiness: 6, social: -4, energy: 4 },
+        clearsDebuff: true,
+        history: "Let them cool down at their own pace.",
+      },
+    ],
+  },
+  {
+    id: "exhaustion",
+    title: "Bone-deep exhaustion",
+    description: "Their eyelids droop and paws drag after pushing too hard.",
+    tag: "fatigue",
+    triggeredOnly: true,
+    resolvesDebuff: "exhaustion",
+    choices: [
+      {
+        label: "Tuck them into bed",
+        deltas: { energy: 24, health: 6, social: -4 },
+        clearsDebuff: true,
+        history: "Guided them into deep, healing rest.",
+      },
+      {
+        label: "Encourage gentle stretching",
+        deltas: { energy: 10, health: 4, happiness: 4 },
+        clearsDebuff: true,
+        history: "Loosened the tired muscles with light stretches.",
+      },
+    ],
+  },
 ];
 
 function createDefaultState() {
@@ -222,6 +289,7 @@ function createDefaultState() {
     history: [],
     events: [],
     eventHistory: [],
+    activeDebuffs: [],
     nextEventMinute: EVENT_COOLDOWN_MIN,
     lastTick: Date.now(),
     lastSaved: Date.now(),
@@ -279,6 +347,7 @@ function loadState() {
     parsed.eventHistory = Array.isArray(parsed.eventHistory)
       ? parsed.eventHistory.slice(-HISTORY_LIMIT)
       : [];
+    parsed.activeDebuffs = Array.isArray(parsed.activeDebuffs) ? parsed.activeDebuffs : [];
     parsed.nextEventMinute = Number.isFinite(parsed.nextEventMinute)
       ? parsed.nextEventMinute
       : parsed.ageMinutes + EVENT_COOLDOWN_MIN;
@@ -299,6 +368,7 @@ function saveState(state) {
 }
 
 const state = loadState();
+enforceStatCaps();
 
 const elements = {
   nameInput: document.querySelector("#name-input"),
@@ -349,6 +419,68 @@ function addEventHistory(entry) {
   addHistory(entry);
 }
 
+function getEventDefinition(id) {
+  return EVENT_POOL.find((entry) => entry.id === id);
+}
+
+function hasPendingEvent(id) {
+  return state.events.some((event) => event.id === id);
+}
+
+function enqueueEventById(id) {
+  if (hasPendingEvent(id)) return;
+  const definition = getEventDefinition(id);
+  if (!definition) return;
+  const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const payload = { ...definition, createdAt: stamp };
+  state.events.push(payload);
+  addEventHistory(`${stamp} – ${definition.title}`);
+}
+
+function enforceStatCaps() {
+  const caps = {};
+  state.activeDebuffs.forEach((debuff) => {
+    Object.entries(debuff.caps || {}).forEach(([need, maxValue]) => {
+      const next = caps[need] === undefined ? maxValue : Math.min(caps[need], maxValue);
+      caps[need] = next;
+    });
+  });
+  Object.entries(caps).forEach(([need, cap]) => {
+    if (!NEEDS.includes(need)) return;
+    state.stats[need] = Math.min(state.stats[need], cap);
+  });
+}
+
+function removeDebuff(id, reason) {
+  const existing = state.activeDebuffs.find((entry) => entry.id === id);
+  if (!existing) return;
+  state.activeDebuffs = state.activeDebuffs.filter((entry) => entry.id !== id);
+  if (reason) {
+    addHistory(reason);
+  }
+}
+
+function removeExpiredDebuffs() {
+  const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  state.activeDebuffs
+    .filter((entry) => entry.expiresAt <= state.ageMinutes)
+    .forEach((entry) => {
+      addHistory(`${stamp} – Recovered from ${entry.label}`);
+    });
+  state.activeDebuffs = state.activeDebuffs.filter((entry) => entry.expiresAt > state.ageMinutes);
+}
+
+function applyDebuff({ id, label, duration, blockedActions = [], caps = {}, history }) {
+  if (state.activeDebuffs.some((entry) => entry.id === id)) {
+    return;
+  }
+  const expiresAt = state.ageMinutes + duration;
+  state.activeDebuffs.push({ id, label, expiresAt, blockedActions, caps });
+  const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  addHistory(`${stamp} – ${history || label}`);
+  enforceStatCaps();
+}
+
 function updateMood() {
   const average = NEEDS.reduce((sum, need) => sum + state.stats[need], 0) / NEEDS.length;
   for (const { mood, threshold } of MOOD_THRESHOLDS) {
@@ -358,6 +490,51 @@ function updateMood() {
     }
   }
   state.mood = "distressed";
+}
+
+function checkCriticalNeeds() {
+  const crises = [
+    {
+      id: "sickness",
+      label: "sickness",
+      trigger: () => state.stats.health < CRITICAL_THRESHOLD,
+      duration: 360,
+      blockedActions: ["play"],
+      caps: { energy: 85, happiness: 80 },
+      history: "Fell sick and needs extra care.",
+    },
+    {
+      id: "meltdown",
+      label: "emotional meltdown",
+      trigger: () => state.stats.happiness < CRITICAL_THRESHOLD || state.stats.social < CRITICAL_THRESHOLD,
+      duration: 240,
+      blockedActions: ["discipline", "play"],
+      caps: { happiness: 75, social: 75 },
+      history: "Feelings spiraled into a meltdown.",
+    },
+    {
+      id: "exhaustion",
+      label: "exhaustion",
+      trigger: () => state.stats.energy < CRITICAL_THRESHOLD,
+      duration: 180,
+      blockedActions: ["play", "talk"],
+      caps: { energy: 70 },
+      history: "Energy crashed and everything feels heavy.",
+    },
+  ];
+
+  crises.forEach((crisis) => {
+    if (!crisis.trigger()) return;
+    applyDebuff({
+      id: crisis.id,
+      label: crisis.label,
+      duration: crisis.duration,
+      blockedActions: crisis.blockedActions,
+      caps: crisis.caps,
+      history: crisis.history,
+    });
+    enqueueEventById(crisis.id);
+  });
 }
 
 function applyDecay(minutes) {
@@ -389,6 +566,9 @@ function enqueueRandomEvent() {
     if (event.requiresTrait && !state.traits.includes(event.requiresTrait)) {
       return false;
     }
+    if (event.triggeredOnly) {
+      return false;
+    }
     return true;
   });
   if (!candidates.length) {
@@ -406,7 +586,10 @@ function enqueueRandomEvent() {
 function advanceTime(minutes) {
   if (!minutes) return;
   state.ageMinutes += minutes;
+  removeExpiredDebuffs();
   applyDecay(minutes);
+  enforceStatCaps();
+  checkCriticalNeeds();
   updateMood();
   advanceStageIfReady();
   while (state.ageMinutes >= state.nextEventMinute) {
@@ -417,12 +600,23 @@ function advanceTime(minutes) {
 function applyAction(key) {
   const action = ACTIONS[key];
   if (!action) return;
+  const blockingDebuff = state.activeDebuffs.find((debuff) =>
+    (debuff.blockedActions || []).includes(key)
+  );
+  if (blockingDebuff) {
+    const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    addHistory(`${stamp} – Too affected by ${blockingDebuff.label} to ${action.label.toLowerCase()}`);
+    render();
+    maybeSave();
+    return;
+  }
   advanceTime(action.minutes || 0);
   const deltas = applyTraitModifiers(action.deltas || {}, { type: "action", key });
   Object.entries(deltas).forEach(([need, delta]) => {
     if (!NEEDS.includes(need)) return;
     state.stats[need] = clamp(state.stats[need] + delta, 0, 100);
   });
+  enforceStatCaps();
   updateMood();
   const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   addHistory(`${stamp} – ${action.label}`);
@@ -445,8 +639,13 @@ function resolveEvent(eventId, choiceIndex) {
     if (!NEEDS.includes(need)) return;
     state.stats[need] = clamp(state.stats[need] + delta, 0, 100);
   });
+  enforceStatCaps();
   updateMood();
   const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (choice.clearsDebuff) {
+    const recoveredMessage = `${stamp} – Recovered from ${event.resolvesDebuff || event.id}`;
+    removeDebuff(event.resolvesDebuff || event.id, recoveredMessage);
+  }
   addEventHistory(`${stamp} – ${event.title}: ${choice.history || choice.label}`);
   state.events.splice(eventIndex, 1);
   render();
