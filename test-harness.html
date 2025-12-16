@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tomagotchi Browser Tests</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f4f5f7;
+        color: #222;
+        margin: 0;
+        padding: 1.5rem;
+      }
+
+      h1 {
+        margin: 0 0 1rem;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      }
+
+      .column {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .pet-sprite {
+        width: 140px;
+        height: 140px;
+        background: #e8ecf1;
+        border-radius: 8px;
+      }
+
+      .progress {
+        width: 100%;
+        background: #e3e7ed;
+        height: 10px;
+        border-radius: 6px;
+      }
+
+      .progress-bar {
+        height: 10px;
+        border-radius: 6px;
+        background: #4a8df8;
+      }
+
+      #results {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      #results li {
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+      }
+
+      #results li.pass {
+        background: #e6f4ea;
+        color: #0f5132;
+      }
+
+      #results li.fail {
+        background: #fce8e6;
+        color: #6a1b17;
+      }
+
+      .detail {
+        display: block;
+        margin-top: 0.25rem;
+        color: inherit;
+        opacity: 0.8;
+      }
+    </style>
+    <script>
+      // Prevent the main game loop from running during tests.
+      window.requestAnimationFrame = () => 0;
+    </script>
+  </head>
+  <body>
+    <h1>Tomagotchi Browser Tests</h1>
+    <p>
+      This page runs lightweight, dependency-free checks against <code>script.js</code>.
+      Open it directly in a browser to verify core logic.
+    </p>
+
+    <div class="app-shell">
+      <div class="column">
+        <label>
+          Name
+          <input id="name-input" type="text" />
+        </label>
+        <div id="pet-stage"></div>
+        <div id="pet-mood"></div>
+        <div id="pet-age"></div>
+        <div id="pet-traits"></div>
+        <div id="pet-sprite" class="pet-sprite"></div>
+      </div>
+      <div class="column">
+        <ul id="stat-list"></ul>
+        <ul id="history-list"></ul>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <div id="action-grid" class="column"></div>
+      <div class="column">
+        <div id="event-feed"></div>
+        <div class="column">
+          <button id="rename-button" type="button">Rename</button>
+          <button id="reset-button" type="button">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2>Results</h2>
+      <ul id="results"></ul>
+    </section>
+
+    <script src="script.js"></script>
+    <script>
+      const resultsElement = document.querySelector("#results");
+
+      function addResult(name, passed, detail = "") {
+        const li = document.createElement("li");
+        li.className = passed ? "pass" : "fail";
+        li.innerHTML = `<strong>${passed ? "✔" : "✖"} ${name}</strong>`;
+        if (detail) {
+          const span = document.createElement("span");
+          span.className = "detail";
+          span.textContent = detail;
+          li.appendChild(span);
+        }
+        resultsElement.appendChild(li);
+      }
+
+      function approxEqual(actual, expected, tolerance = 0.05) {
+        return Math.abs(actual - expected) <= tolerance;
+      }
+
+      function resetState(overrides = {}) {
+        const fresh = createDefaultState();
+        Object.assign(state, fresh, overrides);
+        state.stats = { ...fresh.stats, ...(overrides.stats || {}) };
+        state.traits = overrides.traits ? [...overrides.traits] : [...fresh.traits];
+        state.history = [...(overrides.history || [])];
+        state.eventHistory = [...(overrides.eventHistory || [])];
+        state.events = [...(overrides.events || [])];
+        state.nextEventMinute =
+          overrides.nextEventMinute !== undefined
+            ? overrides.nextEventMinute
+            : fresh.nextEventMinute;
+        state.lastTick = Date.now();
+        state.lastSaved = Date.now();
+        elements.nameInput.value = state.name;
+        render();
+      }
+
+      function testStatDecay() {
+        const startValue = 100;
+        const stats = Object.fromEntries(NEEDS.map((need) => [need, startValue]));
+        resetState({ stats, nextEventMinute: Number.POSITIVE_INFINITY });
+        advanceTime(5);
+
+        const expectedNourishment = startValue - DEFAULT_DECAY.nourishment * 5;
+        const expectedEnergy = startValue - DEFAULT_DECAY.energy * 5;
+
+        if (
+          approxEqual(state.stats.nourishment, expectedNourishment) &&
+          approxEqual(state.stats.energy, expectedEnergy)
+        ) {
+          addResult("Stat decay over multiple minutes", true);
+        } else {
+          throw new Error(
+            `Decay mismatch (nourishment ${state.stats.nourishment.toFixed(
+              2,
+            )}, energy ${state.stats.energy.toFixed(2)})`,
+          );
+        }
+      }
+
+      function testMoodThresholds() {
+        const high = Object.fromEntries(NEEDS.map((need) => [need, 90]));
+        resetState({ stats: high });
+        updateMood();
+        if (state.mood !== "ecstatic") {
+          throw new Error(`Expected ecstatic, got ${state.mood}`);
+        }
+
+        const mid = Object.fromEntries(NEEDS.map((need) => [need, 60]));
+        state.stats = mid;
+        updateMood();
+        if (state.mood !== "concerned") {
+          throw new Error(`Expected concerned, got ${state.mood}`);
+        }
+
+        const low = Object.fromEntries(NEEDS.map((need) => [need, 20]));
+        state.stats = low;
+        updateMood();
+        if (state.mood !== "distressed") {
+          throw new Error(`Expected distressed, got ${state.mood}`);
+        }
+
+        addResult("Mood updates across thresholds", true);
+      }
+
+      function testStageProgressionNeedsGate() {
+        const lowNeeds = Object.fromEntries(NEEDS.map((need) => [need, 60]));
+        resetState({ stage: "egg", ageMinutes: 9, stats: lowNeeds, nextEventMinute: 999 });
+        advanceTime(2);
+        if (state.stage !== "egg") {
+          throw new Error("Stage progressed despite low needs");
+        }
+
+        const highNeeds = Object.fromEntries(NEEDS.map((need) => [need, 85]));
+        resetState({ stage: "egg", ageMinutes: 9, stats: highNeeds, nextEventMinute: 999 });
+        advanceTime(2);
+        if (state.stage !== "hatchling") {
+          throw new Error("Stage did not progress with strong needs");
+        }
+
+        addResult("Stage progression gated by need levels", true);
+      }
+
+      function testTraitModifiersOnActionsAndEvents() {
+        const baseStats = Object.fromEntries(NEEDS.map((need) => [need, 50]));
+        resetState({ stats: baseStats, traits: ["energetic", "gentle"], nextEventMinute: 9999 });
+
+        const playMinutes = ACTIONS.play.minutes;
+        applyAction("play");
+        const happinessDecay = DEFAULT_DECAY.happiness * playMinutes;
+        const expectedHappiness = clamp(50 - happinessDecay + 14 + 4, 0, 100);
+        const energyDecay = DEFAULT_DECAY.energy * playMinutes;
+        const expectedEnergy = clamp(50 - energyDecay - 8 - 4, 0, 100);
+
+        if (!approxEqual(state.stats.happiness, expectedHappiness)) {
+          throw new Error(`Unexpected happiness ${state.stats.happiness}`);
+        }
+        if (!approxEqual(state.stats.energy, expectedEnergy)) {
+          throw new Error(`Unexpected energy ${state.stats.energy}`);
+        }
+
+        const event = {
+          ...EVENT_POOL.find((entry) => entry.id === "zoomies"),
+          createdAt: "",
+        };
+        state.stats = { ...baseStats };
+        state.events = [event];
+        resolveEvent("zoomies", 0);
+        const expectedEventHappiness = clamp(50 + 6 + 3, 0, 100);
+        const expectedEventEnergy = clamp(50 - 6 - 2, 0, 100);
+        if (!approxEqual(state.stats.happiness, expectedEventHappiness)) {
+          throw new Error(`Event happiness mismatch ${state.stats.happiness}`);
+        }
+        if (!approxEqual(state.stats.energy, expectedEventEnergy)) {
+          throw new Error(`Event energy mismatch ${state.stats.energy}`);
+        }
+
+        addResult("Trait modifiers alter action and event deltas", true);
+      }
+
+      function testEventSchedulingAndResolution() {
+        const random = Math.random;
+        try {
+          Math.random = () => 0;
+          resetState({ ageMinutes: 0, nextEventMinute: 1, events: [] });
+          advanceTime(2);
+          if (!state.events.length) {
+            throw new Error("Expected an event to be enqueued");
+          }
+          const pendingId = state.events[0].id;
+          resolveEvent(pendingId, 0);
+          if (state.events.length) {
+            throw new Error("Event queue was not cleared after resolution");
+          }
+          addResult("Event scheduling and resolution", true);
+        } finally {
+          Math.random = random;
+        }
+      }
+
+      function testHistoryTrimming() {
+        resetState();
+        for (let i = 0; i < HISTORY_LIMIT + 6; i += 1) {
+          addHistory(`Entry ${i}`);
+        }
+        if (state.history.length !== HISTORY_LIMIT) {
+          throw new Error(`History length ${state.history.length} exceeded limit`);
+        }
+        const expectedFirst = `Entry ${6}`;
+        if (state.history[0] !== expectedFirst) {
+          throw new Error(`Oldest entry mismatch (${state.history[0]})`);
+        }
+        addResult("History trims at HISTORY_LIMIT", true);
+      }
+
+      function runAllTests() {
+        const tests = [
+          testStatDecay,
+          testMoodThresholds,
+          testStageProgressionNeedsGate,
+          testTraitModifiersOnActionsAndEvents,
+          testEventSchedulingAndResolution,
+          testHistoryTrimming,
+        ];
+        tests.forEach((fn) => {
+          try {
+            fn();
+          } catch (error) {
+            addResult(fn.name, false, error.message);
+          }
+        });
+      }
+
+      runAllTests();
+    </script>
+  </body>
+</html>
