@@ -92,6 +92,7 @@ body {
 .pet-card,
 .stats,
 .actions,
+.events,
 .history {
   background: var(--card);
   border: 1px solid var(--border);
@@ -189,6 +190,7 @@ body {
 
 .stats h2,
 .actions h2,
+.events h2,
 .history h2 {
   margin-top: 0;
   margin-bottom: 0.75rem;
@@ -302,6 +304,71 @@ body {
 .history-list li {
   color: var(--muted);
   font-size: 0.92rem;
+}
+
+.event-feed {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.event-card {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.event-title {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.event-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.event-body {
+  color: var(--muted);
+  margin: 0.35rem 0 0.65rem;
+}
+
+.event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.event-button {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(79, 70, 229, 0.28);
+  background: var(--accent-soft);
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  color: inherit;
+  font-weight: 600;
+}
+
+.event-button:hover,
+.event-button:focus-visible {
+  border-color: rgba(79, 70, 229, 0.45);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.2);
+}
+
+.event-empty {
+  color: var(--muted);
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 0.85rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--border);
 }
 
 @media (max-width: 720px) {

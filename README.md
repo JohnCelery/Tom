@@ -25,6 +25,8 @@ using `localStorage` and stays on your device.
   shared moments.
 - **Action rich** – Prepare meals, play, rest, chat, and more with stat effects
   tuned for strategic care.
+- **Surprise events** – Respond to trait-aware encounters and branch choices
+  that impact needs and log memorable moments.
 - **Autosave** – Progress is written to `localStorage` automatically and on
   page exit.
 
