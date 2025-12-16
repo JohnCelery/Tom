@@ -29,6 +29,22 @@ const STAGE_THRESHOLDS = {
   teen: 720,
   adult: Number.POSITIVE_INFINITY,
 };
+const STAGE_REWARDS = {
+  hatchling: {
+    caps: { health: 105, happiness: 103 },
+  },
+  child: {
+    traits: ["curious"],
+    caps: { social: 108 },
+  },
+  teen: {
+    caps: { energy: 110, cleanliness: 105 },
+  },
+  adult: {
+    traits: ["resilient"],
+    caps: { health: 115, happiness: 110 },
+  },
+};
 const TRAIT_EFFECTS = {
   energetic: {
     label: "Energetic",
@@ -67,6 +83,30 @@ const TRAIT_EFFECTS = {
     adjust(deltas, context) {
       const next = { ...deltas };
       if (context.type === "action" && context.key === "rest") {
+        next.health = (next.health || 0) + 2;
+      }
+      return next;
+    },
+  },
+  curious: {
+    label: "Curious",
+    description: "Eager to explore and learn through playful challenges.",
+    adjust(deltas, context) {
+      const next = { ...deltas };
+      if (context.type === "action" && ["train", "explore"].includes(context.key)) {
+        next.happiness = (next.happiness || 0) + 2;
+        next.social = (next.social || 0) + 1;
+      }
+      return next;
+    },
+  },
+  resilient: {
+    label: "Resilient",
+    description: "Bounces back quickly from fatigue and strain.",
+    adjust(deltas, context) {
+      const next = { ...deltas };
+      if (context.type === "event" && context.tag === "fatigue") {
+        next.energy = (next.energy || 0) + 2;
         next.health = (next.health || 0) + 2;
       }
       return next;
@@ -121,12 +161,34 @@ const ACTIONS = {
     description: "Set calm, consistent boundaries.",
     deltas: { social: -10, happiness: -6, health: 4 },
     minutes: 4,
+    requiresStage: "child",
   },
   wait: {
     label: "Wait",
     description: "Observe quietly and let time pass.",
     deltas: {},
     minutes: 12,
+  },
+  train: {
+    label: "Train",
+    description: "Practice focus with gentle drills and puzzles.",
+    deltas: { happiness: 10, social: 6, health: 4, energy: -6 },
+    minutes: 14,
+    requiresStage: "child",
+  },
+  explore: {
+    label: "Explore",
+    description: "Venture further to discover new scents and sights.",
+    deltas: { happiness: 12, social: 10, cleanliness: -10, energy: -4 },
+    minutes: 18,
+    requiresStage: "teen",
+  },
+  mentor: {
+    label: "Mentor",
+    description: "Guide a younger friend, boosting confidence together.",
+    deltas: { social: 14, happiness: 10, health: 6 },
+    minutes: 16,
+    requiresStage: "adult",
   },
 };
 const TICK_INTERVAL_MS = 5000; // 1 in-game minute every 5 real seconds
@@ -284,6 +346,7 @@ function createDefaultState() {
     stage: "egg",
     ageMinutes: 0,
     stats: Object.fromEntries(NEEDS.map((need) => [need, 85])),
+    permanentCaps: Object.fromEntries(NEEDS.map((need) => [need, 100])),
     traits: ["gentle", "energetic"],
     mood: "content",
     history: [],
@@ -298,6 +361,33 @@ function createDefaultState() {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function stageIndex(stage) {
+  return STAGE_SEQUENCE.indexOf(stage);
+}
+
+function hasReachedStage(requiredStage) {
+  const requiredIndex = stageIndex(requiredStage);
+  if (requiredIndex === -1) return true;
+  return stageIndex(state.stage) >= requiredIndex;
+}
+
+function getNeedCap(need) {
+  const cap = state.permanentCaps?.[need];
+  if (!Number.isFinite(cap)) {
+    return 100;
+  }
+  return cap;
+}
+
+function clampToNeed(value, need) {
+  return clamp(value, 0, getNeedCap(need));
+}
+
+function isActionUnlocked(action) {
+  if (!action?.requiresStage) return true;
+  return hasReachedStage(action.requiresStage);
 }
 
 function applyTraitModifiers(deltas, context) {
@@ -333,6 +423,10 @@ function loadState() {
     parsed.stats = {
       ...Object.fromEntries(NEEDS.map((need) => [need, 85])),
       ...parsed.stats,
+    };
+    parsed.permanentCaps = {
+      ...Object.fromEntries(NEEDS.map((need) => [need, 100])),
+      ...parsed.permanentCaps,
     };
     parsed.history = Array.isArray(parsed.history) ? parsed.history.slice(-HISTORY_LIMIT) : [];
     parsed.traits = Array.isArray(parsed.traits) && parsed.traits.length ? parsed.traits : ["gentle", "energetic"];
@@ -382,6 +476,7 @@ const elements = {
   sprite: document.querySelector("#pet-sprite"),
   events: document.querySelector("#event-feed"),
 };
+const actionButtons = new Map();
 
 elements.nameInput.value = state.name;
 
@@ -438,7 +533,7 @@ function enqueueEventById(id) {
 }
 
 function enforceStatCaps() {
-  const caps = {};
+  const caps = { ...state.permanentCaps };
   state.activeDebuffs.forEach((debuff) => {
     Object.entries(debuff.caps || {}).forEach(([need, maxValue]) => {
       const next = caps[need] === undefined ? maxValue : Math.min(caps[need], maxValue);
@@ -540,8 +635,44 @@ function checkCriticalNeeds() {
 function applyDecay(minutes) {
   NEEDS.forEach((need) => {
     const next = state.stats[need] - DEFAULT_DECAY[need] * minutes;
-    state.stats[need] = clamp(next, 0, 100);
+    state.stats[need] = clampToNeed(next, need);
   });
+}
+
+function getActionUnlocksForStage(stage) {
+  return Object.entries(ACTIONS)
+    .filter(([, action]) => action.requiresStage === stage)
+    .map(([, action]) => action.label);
+}
+
+function applyStageRewards(nextStage, stamp) {
+  const updates = [];
+  const reward = STAGE_REWARDS[nextStage];
+  const unlockedActions = getActionUnlocksForStage(nextStage);
+
+  if (unlockedActions.length) {
+    updates.push(`Unlocked actions: ${unlockedActions.join(", ")}`);
+  }
+
+  if (reward?.traits) {
+    reward.traits.forEach((trait) => {
+      if (!TRAIT_EFFECTS[trait] || state.traits.includes(trait)) return;
+      state.traits.push(trait);
+      updates.push(`Learned the ${TRAIT_EFFECTS[trait].label} trait`);
+    });
+  }
+
+  if (reward?.caps) {
+    Object.entries(reward.caps).forEach(([need, cap]) => {
+      const current = getNeedCap(need);
+      if (!NEEDS.includes(need) || cap <= current) return;
+      state.permanentCaps[need] = cap;
+      updates.push(`Raised ${need} cap to ${cap}`);
+    });
+    enforceStatCaps();
+  }
+
+  updates.forEach((message) => addHistory(`${stamp} – ${message}`));
 }
 
 function advanceStageIfReady() {
@@ -552,7 +683,9 @@ function advanceStageIfReady() {
   const nextStage = STAGE_SEQUENCE[currentIndex + 1];
   if (nextStage && highNeeds >= 4) {
     state.stage = nextStage;
-    addHistory(`${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – Grew into a ${nextStage}!`);
+    const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    addHistory(`${stamp} – Grew into a ${nextStage}!`);
+    applyStageRewards(nextStage, stamp);
   }
 }
 
@@ -600,6 +733,14 @@ function advanceTime(minutes) {
 function applyAction(key) {
   const action = ACTIONS[key];
   if (!action) return;
+  if (!isActionUnlocked(action)) {
+    const stamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const requiredStage = action.requiresStage || STAGE_SEQUENCE[0];
+    addHistory(`${stamp} – ${action.label} unlocks at the ${requiredStage} stage.`);
+    render();
+    maybeSave();
+    return;
+  }
   const blockingDebuff = state.activeDebuffs.find((debuff) =>
     (debuff.blockedActions || []).includes(key)
   );
@@ -614,7 +755,7 @@ function applyAction(key) {
   const deltas = applyTraitModifiers(action.deltas || {}, { type: "action", key });
   Object.entries(deltas).forEach(([need, delta]) => {
     if (!NEEDS.includes(need)) return;
-    state.stats[need] = clamp(state.stats[need] + delta, 0, 100);
+    state.stats[need] = clampToNeed(state.stats[need] + delta, need);
   });
   enforceStatCaps();
   updateMood();
@@ -637,7 +778,7 @@ function resolveEvent(eventId, choiceIndex) {
   });
   Object.entries(deltas).forEach(([need, delta]) => {
     if (!NEEDS.includes(need)) return;
-    state.stats[need] = clamp(state.stats[need] + delta, 0, 100);
+    state.stats[need] = clampToNeed(state.stats[need] + delta, need);
   });
   enforceStatCaps();
   updateMood();
@@ -726,6 +867,22 @@ function renderEvents() {
   });
 }
 
+function renderActionAvailability() {
+  actionButtons.forEach((button, key) => {
+    const action = ACTIONS[key];
+    if (!action) return;
+    const unlocked = isActionUnlocked(action);
+    button.disabled = !unlocked;
+    if (!unlocked && action.requiresStage) {
+      button.setAttribute("data-locked", "true");
+      button.title = `Unlocks at the ${action.requiresStage} stage.`;
+    } else {
+      button.removeAttribute("data-locked");
+      button.removeAttribute("title");
+    }
+  });
+}
+
 function renderDetails() {
   elements.stage.textContent = state.stage;
   elements.mood.textContent = state.mood;
@@ -743,6 +900,7 @@ function render() {
   renderStats();
   renderHistory();
   renderEvents();
+  renderActionAvailability();
   renderDetails();
 }
 
@@ -774,8 +932,11 @@ function bindActions() {
     button.className = "action-button";
     button.innerHTML = `<strong>${action.label}</strong><span>${action.description}</span>`;
     button.addEventListener("click", () => applyAction(key));
+    actionButtons.set(key, button);
     elements.actionGrid.appendChild(button);
   });
+
+  renderActionAvailability();
 
   document.querySelector("#rename-button").addEventListener("click", () => {
     const nextName = elements.nameInput.value.trim();
