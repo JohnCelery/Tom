@@ -121,65 +121,319 @@ body {
 }
 
 .pet-sprite {
-  width: 70%;
-  height: 70%;
-  border-radius: 40%;
-  background: radial-gradient(circle at 50% 30%, #fff7ed, #f97316 60%);
+  --tone-1: #fff7ed;
+  --tone-2: #fdba74;
+  --tone-3: #fb923c;
+  --belly: #ffeedd;
+  --spot: rgba(251, 146, 60, 0.3);
+  --accent: #f97316;
+  width: 82%;
+  height: 82%;
+  border-radius: 46% 50% 52% 48%;
+  background: radial-gradient(circle at 45% 32%, var(--tone-1), var(--tone-2) 60%,
+      var(--tone-3) 100%);
   position: relative;
-  box-shadow: inset 0 -8px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 -10px 26px rgba(15, 23, 42, 0.16), 0 16px 28px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
 }
 
-.pet-sprite::before,
-.pet-sprite::after {
-  content: "";
+.pet-sprite .glow {
   position: absolute;
-  background: #1f2937;
-  border-radius: 999px;
+  inset: 6%;
+  border-radius: inherit;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.65),
+      transparent 42%), radial-gradient(circle at 76% 18%, rgba(255, 255, 255, 0.4),
+      transparent 50%);
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
 
-.pet-sprite::before {
-  width: 18%;
-  height: 18%;
-  top: 36%;
+.pet-sprite .pattern {
+  position: absolute;
+  inset: 12%;
+  background: radial-gradient(circle at 30% 60%, var(--spot) 0 22%, transparent 24%),
+    radial-gradient(circle at 70% 45%, var(--spot) 0 18%, transparent 22%),
+    radial-gradient(circle at 58% 78%, rgba(14, 165, 233, 0.22) 0 14%, transparent 18%);
+  opacity: 0.85;
+  filter: blur(0.2px);
+}
+
+.pet-sprite .belly {
+  position: absolute;
+  width: 60%;
+  height: 46%;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.65),
+      rgba(255, 255, 255, 0.1)),
+    var(--belly);
+  border-radius: 50% 48% 55% 55%;
+  bottom: 10%;
+  left: 20%;
+  box-shadow: inset 0 0 12px rgba(15, 23, 42, 0.1);
+}
+
+.pet-sprite .face {
+  position: absolute;
+  inset: 32% 18% 26% 18%;
+  display: grid;
+  align-items: center;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.pet-sprite .eye {
+  position: relative;
+  width: 86%;
+  height: 64%;
+  border-radius: 50%;
+  background: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.4);
+}
+
+.pet-sprite .eye .pupil {
+  position: absolute;
+  width: 46%;
+  height: 60%;
+  background: radial-gradient(circle at 40% 35%, #fff, #cbd5e1 70%, #0f172a);
+  border-radius: 50%;
+  top: 16%;
   left: 28%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28);
 }
 
-.pet-sprite::after {
-  width: 18%;
-  height: 18%;
-  top: 36%;
-  right: 28%;
+.pet-sprite .cheek {
+  position: relative;
+  width: 70%;
+  height: 38%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.35), transparent 60%);
+  border-radius: 999px;
+  margin-top: 4px;
 }
 
-.pet-sprite.mood-ecstatic::after,
-.pet-sprite.mood-ecstatic::before {
-  height: 16%;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #1f2937 30%, transparent 100%);
+.pet-sprite .eye-left {
+  grid-column: 2 / 3;
+  justify-self: flex-end;
 }
 
-.pet-sprite.mood-concerned::after,
-.pet-sprite.mood-concerned::before {
-  height: 20%;
-  border-radius: 50% 50% 45% 45%;
+.pet-sprite .eye-right {
+  grid-column: 4 / 5;
 }
 
-.pet-sprite.mood-distressed::after,
-.pet-sprite.mood-distressed::before {
-  height: 14%;
-  border-radius: 50%;
-  transform: rotate(180deg);
-  top: 42%;
+.pet-sprite .cheek-left {
+  grid-column: 2 / 3;
+  justify-self: center;
+}
+
+.pet-sprite .cheek-right {
+  grid-column: 4 / 5;
+  justify-self: center;
 }
 
 .pet-sprite .mouth {
+  grid-column: 3 / 4;
+  justify-self: center;
+  align-self: end;
+  width: 58%;
+  height: 40%;
+  border-radius: 50% 50% 60% 60%;
+  background: #0f172a;
+  position: relative;
+  overflow: hidden;
+}
+
+.pet-sprite .mouth::after {
+  content: "";
   position: absolute;
-  width: 30%;
+  inset: 38% 15% auto 15%;
+  height: 50%;
+  background: linear-gradient(180deg, #fda4af, #fb7185);
+  border-radius: 50%;
+}
+
+.pet-sprite .wing {
+  position: absolute;
+  width: 26%;
+  height: 34%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.6), transparent 50%),
+    linear-gradient(145deg, rgba(79, 70, 229, 0.5), rgba(56, 189, 248, 0.45));
+  border-radius: 50% 60% 65% 40%;
+  top: 28%;
+  filter: drop-shadow(0 10px 14px rgba(79, 70, 229, 0.3));
+  opacity: 0.9;
+}
+
+.wing-left {
+  left: -6%;
+  transform: rotate(-18deg);
+}
+
+.wing-right {
+  right: -6%;
+  transform: scaleX(-1) rotate(-18deg);
+}
+
+.pet-sprite .crest {
+  position: absolute;
+  top: 10%;
+  left: 38%;
+  width: 28%;
   height: 18%;
-  border-radius: 999px;
-  background: #1f2937;
-  bottom: 24%;
-  left: 35%;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5), transparent 60%),
+    linear-gradient(180deg, rgba(14, 165, 233, 0.4), rgba(79, 70, 229, 0.6));
+  border-radius: 60% 60% 40% 40%;
+  transform: rotate(-6deg);
+  box-shadow: 0 8px 12px rgba(79, 70, 229, 0.2);
+}
+
+.pet-sprite .tail {
+  position: absolute;
+  width: 26%;
+  height: 28%;
+  background: linear-gradient(120deg, rgba(14, 165, 233, 0.5), rgba(14, 165, 233, 0.1));
+  border-radius: 30% 80% 60% 80%;
+  bottom: 14%;
+  right: -8%;
+  transform: rotate(28deg);
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.25);
+}
+
+.pet-sprite.stage-egg {
+  --tone-1: #fdf6e3;
+  --tone-2: #fde7c3;
+  --tone-3: #f2b880;
+  --belly: #fffaf0;
+  --spot: rgba(14, 165, 233, 0.22);
+  border-radius: 52% 48% 54% 50%;
+  box-shadow: inset 0 -12px 28px rgba(15, 23, 42, 0.12), 0 10px 20px rgba(15, 23, 42, 0.22);
+}
+
+.pet-sprite.stage-egg .wing,
+.pet-sprite.stage-egg .tail,
+.pet-sprite.stage-egg .crest {
+  opacity: 0.2;
+  filter: blur(0.5px);
+}
+
+.pet-sprite.stage-egg .pattern {
+  background: radial-gradient(circle at 42% 40%, rgba(125, 211, 252, 0.3) 0 18%, transparent 22%),
+    radial-gradient(circle at 70% 62%, rgba(244, 114, 182, 0.3) 0 16%, transparent 20%),
+    radial-gradient(circle at 58% 24%, rgba(251, 191, 36, 0.35) 0 12%, transparent 18%);
+}
+
+.pet-sprite.stage-hatchling {
+  --tone-1: #ecfeff;
+  --tone-2: #bae6fd;
+  --tone-3: #7dd3fc;
+  --belly: #e0f2fe;
+  --spot: rgba(125, 211, 252, 0.35);
+  border-radius: 44% 50% 54% 48%;
+}
+
+.pet-sprite.stage-hatchling .crest {
+  height: 22%;
+  width: 32%;
+  left: 34%;
+  transform: rotate(-12deg);
+}
+
+.pet-sprite.stage-child {
+  --tone-1: #fff7ed;
+  --tone-2: #fdcfc2;
+  --tone-3: #f472b6;
+  --belly: #ffe4e6;
+  --spot: rgba(244, 114, 182, 0.32);
+}
+
+.pet-sprite.stage-child .tail {
+  background: linear-gradient(120deg, rgba(244, 114, 182, 0.5), rgba(244, 114, 182, 0.15));
+  height: 32%;
+  width: 28%;
+  transform: rotate(16deg);
+}
+
+.pet-sprite.stage-teen {
+  --tone-1: #eef2ff;
+  --tone-2: #c7d2fe;
+  --tone-3: #a5b4fc;
+  --belly: #e0e7ff;
+  --spot: rgba(167, 139, 250, 0.32);
+  border-radius: 42% 48% 52% 46%;
+}
+
+.pet-sprite.stage-teen .wing {
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.6), transparent 50%),
+    linear-gradient(145deg, rgba(14, 165, 233, 0.55), rgba(79, 70, 229, 0.55));
+  width: 28%;
+  height: 36%;
+}
+
+.pet-sprite.stage-teen .crest {
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.6), transparent 60%),
+    linear-gradient(180deg, rgba(79, 70, 229, 0.4), rgba(167, 139, 250, 0.6));
+}
+
+.pet-sprite.stage-adult {
+  --tone-1: #ecfdf3;
+  --tone-2: #bbf7d0;
+  --tone-3: #4ade80;
+  --belly: #d1fae5;
+  --spot: rgba(74, 222, 128, 0.26);
+  border-radius: 40% 46% 50% 44%;
+  box-shadow: inset 0 -12px 26px rgba(15, 23, 42, 0.16), 0 16px 28px rgba(16, 185, 129, 0.3);
+}
+
+.pet-sprite.stage-adult .tail {
+  width: 30%;
+  height: 36%;
+  right: -10%;
+  transform: rotate(8deg);
+  background: linear-gradient(120deg, rgba(34, 197, 94, 0.55), rgba(14, 165, 233, 0.25));
+}
+
+.pet-sprite.stage-adult .crest {
+  height: 26%;
+  width: 34%;
+  top: 8%;
+  left: 34%;
+  transform: rotate(-4deg);
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.55), transparent 70%),
+    linear-gradient(180deg, rgba(74, 222, 128, 0.45), rgba(14, 165, 233, 0.6));
+}
+
+.pet-sprite.stage-adult .wing {
+  width: 30%;
+  height: 38%;
+  filter: drop-shadow(0 12px 16px rgba(34, 197, 94, 0.32));
+}
+
+.pet-sprite.mood-ecstatic .eye {
+  height: 52%;
+  border-radius: 60% 60% 50% 50%;
+}
+
+.pet-sprite.mood-ecstatic .mouth {
+  height: 46%;
+  border-radius: 50% 50% 70% 70%;
+}
+
+.pet-sprite.mood-concerned .eye {
+  height: 56%;
+  border-radius: 40% 40% 60% 60%;
+  transform: translateY(3%);
+}
+
+.pet-sprite.mood-concerned .mouth {
+  border-radius: 50% 50% 45% 45%;
+  height: 36%;
+}
+
+.pet-sprite.mood-distressed .eye {
+  height: 44%;
+  border-radius: 50% 50% 80% 80%;
+  transform: translateY(10%);
+}
+
+.pet-sprite.mood-distressed .mouth {
+  height: 30%;
+  border-radius: 45% 45% 35% 35%;
 }
 
 .pet-details {
