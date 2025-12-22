@@ -888,7 +888,7 @@ function renderDetails() {
   elements.mood.textContent = state.mood;
   elements.age.textContent = formatMinutes(state.ageMinutes);
   elements.traits.textContent = state.traits.join(", ");
-  elements.sprite.className = `pet-sprite mood-${state.mood}`;
+  elements.sprite.className = `pet-sprite stage-${state.stage} mood-${state.mood}`;
   if (!elements.sprite.querySelector(".mouth")) {
     const mouth = document.createElement("div");
     mouth.className = "mouth";
